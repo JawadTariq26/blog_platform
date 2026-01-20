@@ -10,23 +10,12 @@ from sqlalchemy import Integer, String, Text
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from forms import CreatePostForm,RegisterForm,LoginForm,CommentForm
+import os
 
 
-'''
-Make sure the required packages are installed: 
-Open the Terminal in PyCharm (bottom left). 
-
-On Windows type:
-python -m pip install -r requirements.txt
-
-On MacOS type:
-pip3 install -r requirements.txt
-
-This will install the packages from the requirements.txt for this project.
-'''
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = '8BYkEfBA6O6donzWlSihBXox7C0sKR6b'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
 ckeditor = CKEditor(app)
 
 
@@ -41,7 +30,7 @@ def load_user(id):
     return db.get_or_404(User,id)
 
 
-gavator_key = '7466:gk-3uTnv4dWGPAAjPe6FpXRhGSMGQzIu6aPmbDxL4H_d6Ub0ElXWKQRGrsgtqaES'
+gavator_key = os.environ.get('GVATAR_KEY')
 gravatar = Gravatar(app,
                     size=100,
                     rating='g',
@@ -64,7 +53,7 @@ def admin_only(func):
 # CREATE DATABASE
 class Base(DeclarativeBase):
     pass
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///posts.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI','sqlite:///posts.db')
 db = SQLAlchemy(model_class=Base)
 db.init_app(app)
 
