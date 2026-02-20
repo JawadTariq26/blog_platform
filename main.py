@@ -1,5 +1,5 @@
 from datetime import date
-from flask import Flask, abort, render_template, redirect, url_for, flash,request
+from flask import Flask, abort, jsonify, render_template, redirect, url_for, flash,request
 from flask_bootstrap import Bootstrap5
 from flask_ckeditor import CKEditor
 from flask_gravatar import Gravatar
@@ -21,7 +21,7 @@ ckeditor = CKEditor(app)
 
 Bootstrap5(app)
 
-# TODO: Configure Flask-Login
+
 login_manager = LoginManager()
 login_manager.init_app(app)
 
@@ -50,10 +50,9 @@ def admin_only(func):
             return func(*args,**kwargs)
     return inner    
 
-# CREATE DATABASE
 class Base(DeclarativeBase):
     pass
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI','sqlite:///posts.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI')
 db = SQLAlchemy(model_class=Base)
 db.init_app(app)
 
@@ -72,7 +71,7 @@ class BlogPost(db.Model):
     # ******* parent relation  ***********
     comments = relationship('Comment',back_populates='parent_post')
 
-# TODO: Create a User table for all your registered users. 
+
 class User(UserMixin,db.Model):
     __tablename__ = 'users'
     id : Mapped[int] = mapped_column(Integer,primary_key=True)
@@ -99,9 +98,14 @@ with app.app_context():
     db.create_all()
  
 
+@app.route('/signup', methods=['POST'])
+def signup():
+    request_data = request.form.to_dict()
+    if request_data.get("email"):
+        if len(request_data['email']) < 5:
+            return "Email must be at least 5 characters long", 400
 
 
-# TODO: Use Werkzeug to hash the user's password when creating a new user.
 @app.route('/register',methods=['GET','POST'])
 def register():
     form = RegisterForm()
@@ -124,7 +128,6 @@ def register():
 
 
 
-# TODO: Retrieve a user from the database based on their email. 
 @app.route('/login',methods = ['GET','POST'])
 def login():
     form = LoginForm()
@@ -162,7 +165,6 @@ def get_all_posts():
     return render_template("index.html", all_posts=posts)
 
 
-# TODO: Allow logged-in users to comment on posts
 @app.route("/post/<int:post_id>",methods = ['GET','POST'])
 def show_post(post_id):
     form = CommentForm()
@@ -185,10 +187,9 @@ def show_post(post_id):
     
 
 
-# TODO: Use a decorator so only an admin user can create a new post
 @app.route("/new-post", methods=["GET", "POST"])
 @admin_only
-def add_new_post():
+def add_new_post():    
     form = CreatePostForm()
     if form.validate_on_submit():
         new_post = BlogPost(
@@ -205,7 +206,6 @@ def add_new_post():
     return render_template("make-post.html", form=form)
 
 
-# TODO: Use a decorator so only an admin user can edit a post
 @app.route("/edit-post/<int:post_id>", methods=["GET", "POST"])
 @admin_only
 def edit_post(post_id):
