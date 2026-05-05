@@ -1,5 +1,5 @@
 from datetime import date
-from flask import Flask, abort, jsonify, render_template, redirect, url_for, flash,request
+from flask import Flask, abort, jsonify, render_template, redirect, url_for, flash,request,session
 from flask_bootstrap import Bootstrap5
 from flask_ckeditor import CKEditor
 from flask_gravatar import Gravatar
@@ -9,14 +9,23 @@ from sqlalchemy.orm import relationship, DeclarativeBase, Mapped, mapped_column
 from sqlalchemy import Integer, String, Text
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
-from forms import CreatePostForm,RegisterForm,LoginForm,CommentForm
+from forms import CreatePostForm,RegisterForm,LoginForm,CommentForm,InputForm
 import os
+from dotenv import load_dotenv
+from openai import OpenAI
+from prompt import prompt
+from schema import BlogContent
 
-
+load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
 ckeditor = CKEditor(app)
+
+client = OpenAI(
+  base_url="https://openrouter.ai/api/v1",
+  api_key=os.environ.get("OPENAI_KEY"),
+)
 
 
 Bootstrap5(app)
@@ -204,6 +213,53 @@ def add_new_post():
         db.session.commit()
         return redirect(url_for("get_all_posts"))
     return render_template("make-post.html", form=form)
+
+
+@app.route("/new-post_ai", methods=["GET", "POST"])
+@admin_only
+def add_new_post_ai():
+    input_form = InputForm()
+    if "generate" not in session:
+        if input_form.validate_on_submit():
+            question = str(input_form.content.data)
+
+            completion = client.beta.chat.completions.parse(
+                model="meta-llama/llama-3.3-70b-instruct",
+                messages=[
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": question},
+                ],
+                response_format=BlogContent
+            )
+
+            blog = completion.choices[0].message.parsed
+            blog_dict = blog.model_dump()
+
+            session["generate"] = blog_dict
+
+            return redirect(url_for("add_new_post_ai"))
+
+        return render_template("userinput.html", form=input_form)
+
+    post_form = CreatePostForm(data=session["generate"])
+
+    if post_form.validate_on_submit():
+        new_post = BlogPost(
+            title=post_form.title.data,
+            subtitle=post_form.subtitle.data,
+            body=post_form.body.data,
+            img_url=post_form.img_url.data,  
+            author=current_user,
+            date=date.today().strftime("%B %d, %Y")
+        )
+        db.session.add(new_post)
+        db.session.commit()
+
+        session.pop("generate", None)
+
+        return redirect(url_for("get_all_posts"))
+
+    return render_template("make-post.html", form=post_form)
 
 
 

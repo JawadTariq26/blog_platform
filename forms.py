@@ -7,7 +7,7 @@ from flask_ckeditor import CKEditorField
 class CreatePostForm(FlaskForm):
     title = StringField("Blog Post Title", validators=[DataRequired()])
     subtitle = StringField("Subtitle", validators=[DataRequired()])
-    img_url = StringField("Blog Image URL", validators=[DataRequired(), URL()])
+    img_url = StringField("Blog Image URL",default='insert your favoutite image here !', validators=[DataRequired(), URL()])
     body = CKEditorField("Blog Content", validators=[DataRequired()])
     submit = SubmitField("Submit Post")
 
@@ -26,3 +26,8 @@ class LoginForm(FlaskForm):
 class CommentForm(FlaskForm):
     comment = CKEditorField('Comments',validators=[DataRequired()])
     submit = SubmitField('Post Comment')
+
+
+class InputForm(FlaskForm):
+    content = StringField('Type the Topic',validators=[DataRequired()])
+    submit = SubmitField('Start Creation')
